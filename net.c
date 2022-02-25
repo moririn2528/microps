@@ -171,6 +171,7 @@ void net_shutdown(void) {
   intr_shutdown();
   debugf("shutting down");
 }
+
 int net_init(void) {
   if (intr_init() == -1) {
     errorf("intr_init() failure");

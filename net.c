@@ -1,13 +1,13 @@
-#include "net.h"
-
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "ip.h"
 #include "platform.h"
 #include "util.h"
+#include "net.h"
+#include "ip.h"
+
 struct net_protocol {
   struct net_protocol *next;
   uint16_t type;
@@ -163,6 +163,20 @@ int net_softirq_handler(void) {
       proto->handler(entry->data, entry->len, entry->dev);
       memory_free(entry);
     }
+  }
+  return 0;
+}
+
+/* NOTE: must not be call after net_run() */
+int net_device_add_iface(struct net_device *dev, struct net_iface *iface) {}
+
+struct net_iface *net_device_get_iface(struct net_device *dev, int family) {}
+
+int net_device_output(struct net_device *dev, uint16_t type,
+                      const uint8_t *data, size_t len, const void *dst) {
+  if (!NET_DEVICE_IS_UP(dev)) {
+    errorf("not opened, dev=%s", dev->name);
+    return -1;
   }
   return 0;
 }

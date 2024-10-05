@@ -1,0 +1,9 @@
+services:
+  base:
+    build: .
+    volumes:
+    - type: bind
+      source: .
+      target: /user
+    tty: true
+    privileged: true

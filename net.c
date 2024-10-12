@@ -38,10 +38,10 @@ static int net_device_open(struct net_device *dev) {
       errorf("failure, dev=%s", dev->name);
       return -1;
     }
-    dev->flags |= NET_DEVICE_FLAG_UP;
-    infof("dev=%s, state=%s", dev->name, NET_DEVICE_STATE(dev));
-    return 0;
   }
+  dev->flags |= NET_DEVICE_FLAG_UP;
+  infof("dev=%s, state=%s", dev->name, NET_DEVICE_STATE(dev));
+  return 0;
 }
 static int net_device_close(struct net_device *dev) {
   if (!NET_DEVICE_IS_UP(dev)) {
@@ -98,7 +98,6 @@ void net_shutdown(void) {
     net_device_close(dev);
   }
   debugf("shutting down");
-  return 0;
 }
 int net_init(void) {
   infof("initialized");

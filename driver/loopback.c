@@ -76,6 +76,8 @@ static int loopback_isr(unsigned int irq, void *id) {
 }
 
 static struct net_device_ops loopback_ops = {
+    .open = NULL,
+    .close = NULL,
     .transmit = loopback_transmit,
 };
 

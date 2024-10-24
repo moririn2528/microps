@@ -1,6 +1,7 @@
 {
   "makefile.configureOnOpen": true,
   "files.associations": {
-    "signal.h": "c"
+    "signal.h": "c",
+    "ip.h": "c"
   }
 }

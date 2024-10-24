@@ -197,11 +197,50 @@ static void ip_input(const uint8_t *data, size_t len, struct net_device *dev) {
 }
 
 static int ip_output_device(struct ip_iface *iface, const uint8_t *data,
-                            size_t len, ip_addr_t dst) {}
+                            size_t len, ip_addr_t dst) {
+  uint8_t hwaddr[NET_DEVICE_ADDR_LEN] = {};
+  if (NET_IFACE(iface)->dev->flags & NET_DEVICE_FLAG_NEED_ARP) {
+    if (dst == iface->broadcast || dst == IP_ADDR_BROADCAST) {
+      memcpy(hwaddr, NET_IFACE(iface)->dev->broadcast,
+             NET_IFACE(iface)->dev->alen);
+    } else {
+      errorf("ARP does not implement yet");
+      return -1;
+    }
+  }
+  return net_device_output(NET_IFACE(iface)->dev, NET_PROTOCOL_TYPE_IP, data,
+                           len, hwaddr);
+}
 
 static ssize_t ip_output_core(struct ip_iface *iface, uint8_t protocol,
                               const uint8_t *data, size_t len, ip_addr_t src,
-                              ip_addr_t dst, uint16_t id, uint16_t offset) {}
+                              ip_addr_t dst, uint16_t id, uint16_t offset) {
+  uint8_t buf[IP_TOTAL_SIZE_MAX];
+  struct ip_hdr *hdr;
+  uint16_t hlen, total;
+  char addr[IP_ADDR_STR_LEN];
+
+  hlen = IP_HDR_SIZE_MIN;
+  total = hlen + len;
+  hdr = (struct ip_hdr *)buf;
+  hdr->vhl = IP_VERSION_IPV4 << 4 | (IP_HDR_SIZE_MIN >> 2);
+  hdr->tos = 0;
+  hdr->total = hton16(total);
+  hdr->id = hton16(id);
+  hdr->offset = hton16(offset);
+  hdr->ttl = 255;
+  hdr->protocol = protocol;
+  hdr->src = src;
+  hdr->dst = dst;
+  hdr->sum = 0; /* clear */
+  hdr->sum = cksum16((uint16_t *)hdr, hlen, 0);
+  memcpy(hdr + hlen, data, len);
+
+  debugf("dev=%s, dst=%s, protocol=%u, len=%u", NET_IFACE(iface)->dev->name,
+         ip_addr_ntop(dst, addr, sizeof(addr)), protocol, total);
+  ip_dump(buf, total);
+  return ip_output_device(iface, buf, total, dst);
+}
 
 static uint16_t ip_generate_id(void) {
   static mutex_t mutex = MUTEX_INITIALIZER;
@@ -215,7 +254,38 @@ static uint16_t ip_generate_id(void) {
 }
 
 ssize_t ip_output(uint8_t protocol, const uint8_t *data, size_t len,
-                  ip_addr_t src, ip_addr_t dst) {}
+                  ip_addr_t src, ip_addr_t dst) {
+  struct ip_iface *iface;
+  uint16_t id;
+
+  if (src == IP_ADDR_ANY) {
+    errorf("ip routing does not implement yet");
+    return -1;
+  }
+  iface = ip_iface_select(src);
+  if (!iface) {
+    errorf("no source IP interface");
+    return -1;
+  }
+  if ((dst & iface->netmask) != (iface->unicast & iface->netmask) &&
+      dst != IP_ADDR_BROADCAST) {
+    errorf("not on the same network");
+    return -1;
+  }
+
+  if (NET_IFACE(iface)->dev->mtu < IP_HDR_SIZE_MIN + len) {
+    errorf("too long, dev=%s, mtu=%u < %zu", NET_IFACE(iface)->dev->name,
+           NET_IFACE(iface)->dev->mtu, IP_HDR_SIZE_MIN + len);
+    return -1;
+  }
+  id = ip_generate_id();
+  if (ip_output_core(iface, protocol, data, len, iface->unicast, dst, id, 0) ==
+      -1) {
+    errorf("ip_output_core failure");
+    return -1;
+  }
+  return 0;
+}
 
 int ip_init(void) {
   if (net_protocol_register(NET_PROTOCOL_TYPE_IP, ip_input) == -1) {

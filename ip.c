@@ -231,8 +231,7 @@ static void ip_input(const uint8_t *data, size_t len, struct net_device *dev) {
 
   for (struct ip_protocol *proto = protocols; proto; proto = proto->next) {
     if (proto->type == hdr->protocol) {
-      proto->handler((const uint8_t *)(hdr + hlen), total - hlen, hdr->src,
-                     hdr->dst, iface);
+      proto->handler(data + hlen, total - hlen, hdr->src, hdr->dst, iface);
       return;
     }
   }
@@ -278,7 +277,7 @@ static ssize_t ip_output_core(struct ip_iface *iface, uint8_t protocol,
   hdr->dst = dst;
   hdr->sum = 0; /* clear */
   hdr->sum = cksum16((uint16_t *)hdr, hlen, 0);
-  memcpy(hdr + hlen, data, len);
+  memcpy(buf + hlen, data, len);
 
   debugf("dev=%s, dst=%s, protocol=%u, len=%u", NET_IFACE(iface)->dev->name,
          ip_addr_ntop(dst, addr, sizeof(addr)), protocol, total);

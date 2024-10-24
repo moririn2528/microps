@@ -8,7 +8,7 @@
       "name": "(gdb) 起動",
       "type": "cppdbg",
       "request": "launch",
-      "program": "/user/test/step8.exe",
+      "program": "/user/test/step10.exe",
       "args": [],
       "stopAtEntry": false,
       "cwd": "/user",
